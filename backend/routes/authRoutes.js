@@ -2,25 +2,6 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// Seed default admin user if not exists
-// Seed default admin user if not exists
-async function seedDefaultUser() {
-    try {
-        // Wait a bit for connection to be established if called immediately
-        // or just rely on Mongoose buffering, but catch errors safely.
-        const admin = await User.findOne({ username: 'admin' });
-        if (!admin) {
-            await User.create({ username: 'admin', password: 'admin' });
-            console.log('Default admin user created');
-        }
-    } catch (err) {
-        console.error('Error seeding default user (DB might not be connected yet):', err.message);
-        // Do not crash the app
-    }
-}
-// Call and catch any remaining errors (though try/catch above handles logic)
-seedDefaultUser().catch(err => console.error('Seed user failed:', err.message));
-
 // Login
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
