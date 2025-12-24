@@ -16,11 +16,14 @@ app.use(express.json());
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
+    serverSelectionTimeoutMS: 5000 // Fail after 5s if can't connect
 })
     .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
+    .catch(err => {
+        console.error('MongoDB Connection Error:', err.message);
+        // On cloud, we might want to exit if DB fails so the orchestrator restarts it
+        // process.exit(1); 
+    });
 
 // Routes
 app.use('/students', studentRoutes);
