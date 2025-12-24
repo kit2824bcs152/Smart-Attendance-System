@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attendance | Premium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .settings-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .spa-section.hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fas fa-graduation-cap"></i>
+                <h2>Smart<span class="highlight">Attend</span></h2>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active"><i class="fas fa-calendar-check"></i> Attendance</a>
+                <a href="#" class="nav-item"><i class="fas fa-chart-pie"></i> Analytics</a>
+                <a href="#" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="seed-btn" class="sidebar-btn"><i class="fas fa-database"></i> Load Default (Book1)</button>
+                <button id="import-btn" class="sidebar-btn" style="margin-top: 10px;"><i class="fas fa-file-upload"></i>
+                    Import Excel</button>
+                <input type="file" id="excel-input" accept=".xlsx, .xls" hidden>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content-area">
+
+            <!-- Section: Attendance (Default) -->
+            <section id="section-attendance" class="spa-section">
+                <header class="top-bar">
+                    <div class="date-picker-wrapper">
+                        <label for="attendance-date"><i class="far fa-calendar-alt"></i></label>
+                        <input type="date" id="attendance-date">
+                        <button id="load-date-btn" class="icon-btn" title="Load Data"><i
+                                class="fas fa-sync-alt"></i></button>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button id="save-btn" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                        <button id="reset-btn" class="btn btn-danger"><i class="fas fa-trash"></i> Reset</button>
+                        <button id="export-btn" class="btn btn-success"><i class="fas fa-file-excel"></i>
+                            Export</button>
+                    </div>
+                </header>
+
+                <div class="dashboard-grid">
+                    <div class="main-card">
+                        <div class="card-header">
+                            <h3>Attendance Sheet</h3>
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="search-student" placeholder="Search student...">
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Roll No</th>
+                                        <th>Name</th>
+                                        <th>Department</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-table-body">
+                                    <!-- Dynamic Content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="side-panel">
+                        <div class="stat-card">
+                            <h3>Overview</h3>
+                            <div class="stat-item total">
+                                <span>Total</span>
+                                <h4 id="total-count">0</h4>
+                            </div>
+                            <div class="stat-row">
+                                <div class="stat-item present">
+                                    <span>Present</span>
+                                    <h4 id="present-count">0</h4>
+                                </div>
+                                <div class="stat-item absent">
+                                    <span>Absent</span>
+                                    <h4 id="absent-count">0</h4>
+                                </div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="attendance-progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="absent-card">
+                            <h3>Absentees</h3>
+                            <ul id="absent-students-list" class="absent-list">
+                                <!-- Dynamic Content -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section: Students (Placeholder / Read-only View) -->
+            <section id="section-students" class="spa-section hidden">
+                <header class="top-bar">
+                    <h2>Student Management</h2>
+                </header>
+                <div class="main-card">
+                    <p>Student management is integrated into the Attendance Sheet. Use "Import Excel" to add students.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Section: Analytics -->
+            <section id="section-analytics" class="spa-section hidden">
+                <header class="top-bar">
+                    <h2>Analytics Dashboard</h2>
+                </header>
+                <div class="dashboard-grid">
+                    <div class="main-card" style="align-items: center; justify-content: center; height: 500px;">
+                        <h3>Today's Attendance</h3>
+                        <div style="width: 400px; height: 400px;">
+                            <canvas id="attendanceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section: Settings -->
+            <section id="section-settings" class="spa-section hidden">
+                <header class="top-bar">
+                    <h2>Settings</h2>
+                    <button id="logout-btn" class="btn btn-danger">Logout</button>
+                </header>
+                <div class="main-card" style="max-width: 600px; margin: 0 auto;">
+                    <h3>Change Credentials</h3>
+                    <div style="margin-top: 20px;">
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display:block; margin-bottom:5px;">Current Username</label>
+                            <input type="text" id="set-old-user" class="settings-input">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display:block; margin-bottom:5px;">Current Password</label>
+                            <input type="password" id="set-old-pass" class="settings-input">
+                        </div>
+                        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display:block; margin-bottom:5px;">New Username</label>
+                            <input type="text" id="set-new-user" class="settings-input">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display:block; margin-bottom:5px;">New Password</label>
+                            <input type="password" id="set-new-pass" class="settings-input">
+                        </div>
+                        <button id="update-creds-btn" class="btn btn-primary" style="width: 100%;">Update
+                            Credentials</button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-icon warning">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3>Reset Attendance?</h3>
+            <p>This action will mark all students as ABSENT and clear saved data for this date.</p>
+            <div class="modal-actions">
+                <button id="cancel-reset-btn" class="btn btn-text">Cancel</button>
+                <button id="confirm-reset-btn" class="btn btn-danger">Yes, Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
