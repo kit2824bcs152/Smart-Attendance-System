@@ -107,4 +107,37 @@ router.get('/analytics/30days', async (req, res) => {
     }
 });
 
+// Get Monthly Report Data
+router.get('/report/monthly', async (req, res) => {
+    try {
+        const { month } = req.query; // Format: YYYY-MM
+        if (!month) {
+            return res.status(400).json({ message: 'Month is required (YYYY-MM)' });
+        }
+
+        // Regex to match dates starting with YYYY-MM
+        const regex = new RegExp(`^${month}`);
+        const records = await Attendance.find({ date: { $regex: regex } });
+
+        res.json(records);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Delete Attendance for Date
+router.delete('/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const result = await Attendance.findOneAndDelete({ date });
+
+        if (!result) {
+            return res.status(404).json({ message: 'No record found to delete' });
+        }
+        res.json({ message: 'Attendance data deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 module.exports = router;

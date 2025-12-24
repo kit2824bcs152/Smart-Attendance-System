@@ -3,7 +3,11 @@ const API_URL = 'http://localhost:5000';
 // State
 let allStudents = [];
 let attendanceData = {}; // Map rollNo -> status
-let currentDate = new Date().toISOString().split('T')[0];
+// Use Local Time for Default Date
+const now = new Date();
+const offset = now.getTimezoneOffset() * 60000;
+const localDate = new Date(now - offset).toISOString().split('T')[0];
+let currentDate = localDate;
 
 // DOM Elements
 const dateInput = document.getElementById('attendance-date');
@@ -24,7 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     dateInput.value = currentDate;
-    loadStudents();
+    loadStudents().then(() => {
+        loadAttendanceForDate();
+    });
 
     // Navigation
     const navItems = document.querySelectorAll('.nav-item');
@@ -54,10 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Event Listeners
-    document.getElementById('load-date-btn').addEventListener('click', loadAttendanceForDate);
+    // document.getElementById('load-date-btn').addEventListener('click', loadAttendanceForDate); // Removed from UI
+
+    // Auto-load on date change
+    document.getElementById('attendance-date').addEventListener('change', loadAttendanceForDate);
+
     document.getElementById('save-btn').addEventListener('click', saveAttendance);
     document.getElementById('reset-btn').addEventListener('click', showResetConfirmation);
+
+    // Updated Export ID
     document.getElementById('export-btn').addEventListener('click', exportToExcel);
+
     document.getElementById('seed-btn').addEventListener('click', seedStudents);
 
     // Settings & Logout
@@ -298,25 +311,35 @@ async function loadAttendanceForDate() {
     const date = dateInput.value;
     try {
         const res = await fetch(`${API_URL}/attendance/${date}`);
-        if (res.ok) {
-            const data = await res.json();
-            // Map fetched records to state
-            data.records.forEach(record => {
-                attendanceData[record.rollNo] = record.status;
-            });
-            // Reset others to Default (Absent) if new students added? 
-            // For simplicity, we assume student list is static enough or we merge
-        } else {
-            // No record found, reset to all Absent
-            console.log('No record found for this date, resetting view to Absent.');
-            allStudents.forEach(student => {
-                attendanceData[student.rollNo] = 'Absent';
-            });
+        if (!res.ok) {
+            // If date not found, reset UI to "Absent" (New Day)
+            if (res.status === 404) {
+                console.log('No record found for date, resetting UI.');
+                allStudents.forEach(student => {
+                    attendanceData[student.rollNo] = 'Absent';
+                });
+                renderTable();
+                return;
+            }
+            throw new Error('Failed to fetch');
         }
+
+        const data = await res.json();
+
+        // Populate attendanceData from fetched records
+        // Reset first to ensure clean state
+        allStudents.forEach(student => {
+            attendanceData[student.rollNo] = 'Absent';
+        });
+
+        data.records.forEach(record => {
+            attendanceData[record.rollNo] = record.status;
+        });
+
         renderTable();
     } catch (err) {
-        console.error(err);
-        // Fallback or error handling
+        console.error('Error loading date:', err);
+        // Do not alert on 404/reset, only on real errors if needed
     }
 }
 
@@ -327,65 +350,155 @@ function showResetConfirmation() {
 async function resetAttendance() {
     const date = dateInput.value;
     try {
-        const res = await fetch(`${API_URL}/attendance/reset/${date}`, {
+        // Delete from Backend
+        const res = await fetch(`${API_URL}/attendance/${date}`, {
             method: 'DELETE'
         });
 
-        if (res.ok) {
-            alert('Attendance reset successfully');
-            // Reset local state
-            allStudents.forEach(student => {
-                attendanceData[student.rollNo] = 'Absent';
+        if (res.ok || res.status === 404) {
+            // Reset Local State
+            allStudents.forEach(s => {
+                attendanceData[s.rollNo] = 'Absent';
             });
             renderTable();
+            // alert('Attendance data has been permanently deleted.');
         } else {
-            alert('No record to reset or error occurred');
+            const data = await res.json();
+            alert('Error resetting data: ' + data.message);
         }
     } catch (err) {
         console.error(err);
-        alert('Error resetting attendance');
+        alert('Failed to reset attendance.');
     } finally {
         confirmModal.classList.add('hidden');
     }
 }
 
 async function exportToExcel() {
+    // 1. Prepare Data
+    // We want to include 30-Day Stats
+    let analyticsData = {};
     try {
-        // Fetch 30-day analytics
         const res = await fetch(`${API_URL}/attendance/analytics/30days`);
-        const analyticsData = await res.json();
+        if (res.ok) {
+            analyticsData = await res.json();
+        }
+    } catch (e) {
+        console.error('Failed to fetch analytics for export', e);
+    }
 
-        // Prepare data with Analytics
-        const data = allStudents.map(s => ({
-            Date: dateInput.value,
-            RollNo: s.rollNo,
-            Name: s.name,
-            Department: s.department,
-            Status: attendanceData[s.rollNo] || 'Absent',
-            'Attendance % (30 Days)': analyticsData[s.rollNo] || '0.0%'
-        }));
+    const wsData = allStudents.map(s => {
+        const status = attendanceData[s.rollNo] || 'Absent';
+        const percent = analyticsData[s.rollNo] ? `${analyticsData[s.rollNo]}%` : '0%';
+        return {
+            "Roll No": s.rollNo,
+            "Name": s.name,
+            "Department": s.department || 'CSE - C',
+            // "Date": dateInput.value, // Removed as per request
+            // "Status": status, // Removed as per request
+            "Attendance % (30 Days)": percent
+        };
+    });
 
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+    // 2. Create Sheet
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Daily Report");
 
-        XLSX.writeFile(workbook, `Attendance_${dateInput.value}.xlsx`);
+    // 3. Download
+    XLSX.writeFile(wb, `Attendance_${dateInput.value}.xlsx`);
+}
+
+async function exportMonthlyReport() {
+    // Prompt for Month (Default to current YYYY-MM)
+    const currentMonth = dateInput.value.substring(0, 7);
+    const month = prompt("Enter Month (YYYY-MM):", currentMonth);
+    if (!month) return;
+
+    try {
+        const res = await fetch(`${API_URL}/attendance/report/monthly?month=${month}`);
+        if (!res.ok) throw new Error('Failed to fetch monthly data');
+
+        const records = await res.json();
+
+        // Process Data: Matrix [Student x Days]
+        // Get number of days in the month
+        const year = parseInt(month.split('-')[0]);
+        const monthIndex = parseInt(month.split('-')[1]) - 1;
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+        // Create Header Row
+        const headers = ['Roll No', 'Name', 'Department'];
+        for (let i = 1; i <= daysInMonth; i++) {
+            headers.push(i.toString());
+        }
+        headers.push('Total Present');
+        headers.push('Percentage');
+
+        // Map Data
+        const excelData = allStudents.map(student => {
+            const row = {};
+            row['Roll No'] = student.rollNo;
+            row['Name'] = student.name;
+            row['Department'] = student.department || 'CSE - C';
+
+            let presentCount = 0;
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${month}-${String(i).padStart(2, '0')}`;
+
+                // Find record for this date
+                const recordForDay = records.find(r => r.date === dateStr);
+                let status = '-'; // Default no data
+
+                if (recordForDay) {
+                    const studentRecord = recordForDay.records.find(sr => sr.rollNo === student.rollNo);
+                    if (studentRecord) {
+                        status = studentRecord.status === 'Present' ? 'P' : 'A';
+                    }
+                }
+
+                if (status === 'P') presentCount++;
+                row[i.toString()] = status;
+            }
+
+            row['Total Present'] = presentCount;
+            row['Percentage'] = ((presentCount / daysInMonth) * 100).toFixed(1) + '%';
+
+            return row;
+        });
+
+        // Generate Sheet
+        const ws = XLSX.utils.json_to_sheet(excelData, { header: headers });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `Monthly_${month}`);
+        XLSX.writeFile(wb, `Monthly_Attendance_${month}.xlsx`);
+
     } catch (err) {
-        console.error('Error exporting Excel:', err);
-        alert('Failed to export Excel with Analytics');
+        console.error(err);
+        alert('Error generating monthly report');
     }
 }
 
 async function seedStudents() {
+    const students = [
+        { rollNo: '101', name: 'Alice Johnson', department: 'CSE - C' },
+        { rollNo: '102', name: 'Bob Smith', department: 'CSE - C' },
+        { rollNo: '103', name: 'Charlie Brown', department: 'CSE - C' },
+        { rollNo: '104', name: 'David Lee', department: 'CSE - C' },
+        { rollNo: '105', name: 'Eve Davis', department: 'CSE - C' }
+    ];
+
     try {
-        const res = await fetch(`${API_URL}/students/seed`, { method: 'POST' });
-        if (res.ok) {
-            alert('Sample students added! Reloading...');
-            loadStudents();
-        }
+        await fetch(`${API_URL}/students/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ students })
+        });
+        alert('Seeded dummy students!');
+        loadStudents();
     } catch (err) {
         console.error(err);
-        alert('Error seeding database');
     }
 }
 
@@ -394,10 +507,13 @@ async function handleFileUpload(event) {
     if (!file) return;
 
     const reader = new FileReader();
+
     reader.onload = async (e) => {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
+
+            // Assume first sheet
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(sheet);
@@ -405,14 +521,18 @@ async function handleFileUpload(event) {
             // Transform data to match Schema
             const students = jsonData.map(row => {
                 const keys = Object.keys(row);
-                const getVal = (k) => row[keys.find(key => key.toLowerCase().includes(k))];
+                // Heuristics to find correct columns case-insensitively
+                const getVal = (k) => {
+                    const foundKey = keys.find(key => key.toLowerCase().includes(k.toLowerCase()));
+                    return foundKey ? row[foundKey] : undefined;
+                };
 
                 return {
-                    rollNo: getVal('reg') || getVal('roll') || row['RollNo'] || 'Unknown',
-                    name: getVal('name') || row['Name'] || 'Unknown',
-                    department: getVal('dept') || row['Department'] || 'CSE - C'
+                    rollNo: getVal('roll') || getVal('reg') || 'Unknown',
+                    name: getVal('name') || 'Unknown',
+                    department: getVal('dept') || 'CSE - C'
                 };
-            }).filter(s => s.rollNo !== 'Unknown');
+            }).filter(s => s.rollNo !== 'Unknown' && s.name !== 'Unknown');
 
             if (students.length === 0) {
                 alert('No valid student data found in Excel.');

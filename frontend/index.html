@@ -59,15 +59,21 @@
                     <div class="date-picker-wrapper">
                         <label for="attendance-date"><i class="far fa-calendar-alt"></i></label>
                         <input type="date" id="attendance-date">
-                        <button id="load-date-btn" class="icon-btn" title="Load Data"><i
-                                class="fas fa-sync-alt"></i></button>
                     </div>
 
                     <div class="action-buttons">
-                        <button id="save-btn" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
-                        <button id="reset-btn" class="btn btn-danger"><i class="fas fa-trash"></i> Reset</button>
-                        <button id="export-btn" class="btn btn-success"><i class="fas fa-file-excel"></i>
-                            Export</button>
+                        <button class="btn btn-success" id="save-btn">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+
+                        <!-- Export Dropdown -->
+                        <button class="btn btn-primary" id="export-btn">
+                            <i class="fas fa-file-export"></i> Export
+                        </button>
+
+                        <button class="btn btn-danger" id="reset-btn">
+                            <i class="fas fa-redo"></i> Reset
+                        </button>
                     </div>
                 </header>
 
