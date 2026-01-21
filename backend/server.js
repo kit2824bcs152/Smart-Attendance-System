@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const studentRoutes = require('./routes/studentRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
-
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
@@ -13,6 +12,9 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from frontend directory
+app.use(express.static('frontend'));
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/smart_attendance', {
@@ -45,9 +47,9 @@ app.use('/attendance', attendanceRoutes);
 app.use('/auth', authRoutes);
 
 // Root Route
-app.get('/', (req, res) => {
-    res.send('Smart Attendance System API Running');
-});
+// app.get('/', (req, res) => {
+//     res.send('Smart Attendance System API Running');
+// });
 
 // Start Server
 app.listen(PORT, () => {

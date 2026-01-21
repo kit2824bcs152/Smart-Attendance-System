@@ -1,0 +1,20 @@
+package OPERATOR:
+public class EX1 {
+    pubic static void main(string[] args) {
+        int x=2;
+        double a=3.14;
+        double b=(int)x;
+        String a="gjhgjgj";
+        String[]=["Volvo","BMW","Ford","Mazda"];
+        int[] cars1=[1,2,3,4];
+        System.out.println(a+x);
+        System.out.println(x);
+        System.out.println(a-x);
+        System.out.println(a*2);
+        System.out.println(b);
+        System.out.println(s.toLowercase());
+        System.out.println(s.toUppercase());
+        System.out.println(cars[0]);
+        System.out.println("This is an array"+cars1[1]);
+    }
+}
