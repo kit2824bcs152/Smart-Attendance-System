@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const { exec } = require('child_process');
 const studentRoutes = require('./routes/studentRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const authRoutes = require('./routes/authRoutes');
@@ -55,4 +56,6 @@ app.use('/auth', authRoutes);
 // Start Server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    // Open browser automatically
+    exec(`start http://localhost:${PORT}`);
 });
