@@ -1,4 +1,6 @@
-const API_URL = '';
+const API_URL = window.location.protocol === 'file:' || window.location.port === '5500' || ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '5000')
+    ? 'http://localhost:5000'
+    : '';
 
 // State
 let allStudents = [];
