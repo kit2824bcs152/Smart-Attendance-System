@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -22,7 +23,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/smart_atten
 })
     .then(async () => {
         console.log('MongoDB Connected');
-        
+
         // Seed default admin user
         const User = require('./models/User');
         try {

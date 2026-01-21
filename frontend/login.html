@@ -119,9 +119,17 @@
             : '';
         const loginForm = document.getElementById('login-form');
         const errorMsg = document.getElementById('error-msg');
+        const loginBtn = document.querySelector('.login-btn');
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // Visual feedback
+            const originalText = loginBtn.innerHTML;
+            loginBtn.textContent = 'Logging in...';
+            loginBtn.disabled = true;
+            errorMsg.style.display = 'none';
+
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
@@ -139,11 +147,28 @@
                 } else {
                     errorMsg.style.display = 'block';
                     errorMsg.textContent = data.message;
+                    loginBtn.innerHTML = originalText;
+                    loginBtn.disabled = false;
                 }
             } catch (err) {
                 console.error(err);
                 errorMsg.style.display = 'block';
                 errorMsg.textContent = 'Server Error. Ensure backend is running.';
+                loginBtn.innerHTML = originalText;
+                loginBtn.disabled = false;
+            }
+        });
+
+        // Explicit Enter Key Support
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    loginBtn.click();
+                }
+            });
+        });
             }
         });
     </script>
